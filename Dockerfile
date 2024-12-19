@@ -65,13 +65,13 @@ RUN pip3 install --upgrade pip setuptools
 
 # Copy Python Requirements to /root/FallenRobot
 RUN git clone https://github.com/Shivam1232241/cricket2 /root/cricket2
-WORKDIR /root/cricket1
+WORKDIR /root/cricket2
 
 
 ENV PATH="/home/bot/bin:$PATH"
 
 # Install requirements
-RUN pip3 install -U -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 # Starting Worker
 CMD ["python3","-m", "shivu"]
