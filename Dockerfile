@@ -64,7 +64,7 @@ RUN apt update && apt upgrade -y && \
 RUN pip3 install --upgrade pip setuptools
 
 # Copy Python Requirements to /root/FallenRobot
-RUN git clone https://github.com/Shivam1232241/cricket1 /root/cricket1
+RUN git clone https://github.com/Shivam1232241/cricket2 /root/cricket2
 WORKDIR /root/cricket1
 
 
