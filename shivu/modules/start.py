@@ -1,38 +1,52 @@
 import random
 from html import escape 
+import sqlite3
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext, CallbackQueryHandler, CommandHandler
 
-from shivu import application, PHOTO_URL, SUPPORT_CHAT, UPDATE_CHAT, BOT_USERNAME, db, GROUP_ID
-from shivu import pm_users as collection 
+from shivu import application, PHOTO_URL, SUPPORT_CHAT, UPDATE_CHAT, BOT_USERNAME, GROUP_ID
 
+# SQLite database connection function
+def get_db_connection():
+    conn = sqlite3.connect('local_database.db')
+    conn.row_factory = sqlite3.Row  # Access columns by name
+    return conn
+
+# Helper function to insert/update user data in SQLite
+async def update_user_data(user_id, first_name, username, context):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Check if user exists
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    
+    if user_data is None:
+        # Insert new user if not found
+        cursor.execute("INSERT INTO users (user_id, first_name, username) VALUES (?, ?, ?)", 
+                       (user_id, first_name, username))
+        await context.bot.send_message(chat_id=GROUP_ID, 
+                                       text=f"New user Started The Bot..\n User: <a href='tg://user?id={user_id}'>{escape(first_name)})</a>", 
+                                       parse_mode='HTML')
+    else:
+        # Update user data if it's different
+        if user_data['first_name'] != first_name or user_data['username'] != username:
+            cursor.execute("UPDATE users SET first_name = ?, username = ? WHERE user_id = ?", 
+                           (first_name, username, user_id))
+    
+    conn.commit()
+    conn.close()
 
 async def start(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     first_name = update.effective_user.first_name
     username = update.effective_user.username
 
-    user_data = await collection.find_one({"_id": user_id})
+    # Update user data in SQLite
+    await update_user_data(user_id, first_name, username)
 
-    if user_data is None:
-        
-        await collection.insert_one({"_id": user_id, "first_name": first_name, "username": username})
-        
-        await context.bot.send_message(chat_id=GROUP_ID, 
-                                       text=f"New user Started The Bot..\n User: <a href='tg://user?id={user_id}'>{escape(first_name)})</a>", 
-                                       parse_mode='HTML')
-    else:
-        
-        if user_data['first_name'] != first_name or user_data['username'] != username:
-            
-            await collection.update_one({"_id": user_id}, {"$set": {"first_name": first_name, "username": username}})
-
-    
-
-    if update.effective_chat.type== "private":
-        
-        
+    if update.effective_chat.type == "private":
         caption = f"""
         ***Heyyyy...***
 
@@ -50,7 +64,6 @@ async def start(update: Update, context: CallbackContext) -> None:
         photo_url = random.choice(PHOTO_URL)
 
         await context.bot.send_photo(chat_id=update.effective_chat.id, photo=photo_url, caption=caption, reply_markup=reply_markup, parse_mode='markdown')
-
     else:
         photo_url = random.choice(PHOTO_URL)
         keyboard = [
@@ -62,7 +75,7 @@ async def start(update: Update, context: CallbackContext) -> None:
         ]
         
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=photo_url, caption="🎴Alive!?... \n connect to me in PM For more information ",reply_markup=reply_markup )
+        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=photo_url, caption="🎴Alive!?... \n connect to me in PM For more information ", reply_markup=reply_markup)
 
 async def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -94,7 +107,6 @@ async def button(update: Update, context: CallbackContext) -> None:
 
 ***I am An Open Source Character Catcher Bot..​Add Me in Your group.. And I will send Random Characters After.. every 100 messages in Group... Use /guess to.. Collect that Characters in Your Collection.. and see Collection by using /Harem... So add in Your groups and Collect Your harem***
         """
-
         
         keyboard = [
             [InlineKeyboardButton("ADD ME", url=f'http://t.me/{BOT_USERNAME}?startgroup=new')],
@@ -107,7 +119,7 @@ async def button(update: Update, context: CallbackContext) -> None:
 
         await context.bot.edit_message_caption(chat_id=update.effective_chat.id, message_id=query.message.message_id, caption=caption, reply_markup=reply_markup, parse_mode='markdown')
 
-
+# Add command and callback handlers
 application.add_handler(CallbackQueryHandler(button, pattern='^help$|^back$', block=False))
 start_handler = CommandHandler('start', start, block=False)
 application.add_handler(start_handler)
