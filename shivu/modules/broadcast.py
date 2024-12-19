@@ -1,10 +1,14 @@
+import sqlite3
 from telegram import Update
-from telegram.ext import CallbackContext, CommandHandler 
+from telegram.ext import CallbackContext, CommandHandler
 
-from shivu import application, top_global_groups_collection, pm_users, OWNER_ID 
+from shivu import application, OWNER_ID
+
+# Local SQLite Database Setup
+conn = sqlite3.connect('local_database.db')
+cursor = conn.cursor()
 
 async def broadcast(update: Update, context: CallbackContext) -> None:
-    
     if update.effective_user.id != OWNER_ID:
         await update.message.reply_text("You are not authorized to use this command.")
         return
@@ -15,8 +19,13 @@ async def broadcast(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text("Please reply to a message to broadcast.")
         return
 
-    all_chats = await top_global_groups_collection.distinct("group_id")
-    all_users = await pm_users.distinct("_id")
+    # Fetch all group_ids from the top_global_groups table
+    cursor.execute("SELECT group_id FROM top_global_groups")
+    all_chats = [row[0] for row in cursor.fetchall()]
+
+    # Fetch all user_ids from the total_pm_users table
+    cursor.execute("SELECT user_id FROM total_pm_users")
+    all_users = [row[0] for row in cursor.fetchall()]
 
     shuyaa = list(set(all_chats + all_users))
 
